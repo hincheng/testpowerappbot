@@ -109,22 +109,7 @@
 
 </div>
 
-<script>
-function onSignin(idToken) {
-      let user = clientApplication.getAccount();
-      document.getElementById("userName").innerHTML = "Currently logged in as " + user.name;
-      let requestObj1 = {
-	scopes: ["user.read", 'openid', 'profile']
-      };
-    }
 
-    function onSignInClick() {
-      let requestObj = {
-	scopes: ["user.read", 'openid', 'profile']
-      };
-
-      clientApplication.loginPopup(requestObj).then(onSignin).catch(function (error) {console.log(error) });
-    }
 
 function getOAuthCardResourceUri(activity) {
   if (activity &&
