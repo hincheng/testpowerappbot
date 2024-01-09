@@ -3,7 +3,7 @@
 <head>
   <title>SharePoint FAQ Chat bot</title> 
 <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
-
+<script type="text/javascript" src="https://alcdn.msauth.net/lib/1.2.0/js/msal.js"></script>
 <script src="https://unpkg.com/@azure/storage-blob@10.3.0/browser/azure-storage.blob.min.js"
   integrity="sha384-fsfhtLyVQo3L3Bh73qgQoRR328xEeXnRGdoi53kjo1uectCfAHFfavrBBN2Nkbdf"
   crossorigin="anonymous"></script>
@@ -122,6 +122,25 @@ function getOAuthCardResourceUri(activity) {
    }
 }
 
+	<script>
+function onSignin(idToken) {
+      let user = clientApplication.getAccount();
+      document.getElementById("userName").innerHTML = "Currently logged in as " + user.name;
+      let requestObj1 = {
+	scopes: ["user.read", 'openid', 'profile']
+      };
+    }
+
+    function onSignInClick() {
+      let requestObj = {
+	scopes: ["user.read", 'openid', 'profile']
+      };
+
+
+
+	    
+      clientApplication.loginPopup(requestObj).then(onSignin).catch(function (error) {console.log(error) });
+    }
 function exchangeTokenAsync(resourceUri) {
   let user = clientApplication.getAccount();
    if (user) {
