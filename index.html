@@ -121,7 +121,8 @@ function onSignin(idToken) {
     function onSignInClick() {
       let requestObj = {
 
-	scopes: ["user.read", 'openid', 'profile']
+	scopes: ["user.read", 'openid', 'profile'],
+	      loginHint: 'cpe_03@hktproduct.onmicrosoft.com' 
       };
 
       clientApplication.loginPopup(requestObj).then(onSignin).catch(function (error) {console.log(error) });
