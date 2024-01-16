@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Interface</title>
+    <!-- Ensure to link to your external CSS file here if you have moved the CSS -->
+    <link rel="stylesheet" href="path/to/your/stylesheet.css">
+  <script>
+const VERSION = 0.1;
+const CHAT_HOST_CONTEXT = 'https://api.uat.bot-builder.pccw.com/genkb';  
+const HISTORY_SLICE_COUNT = -1;
+
+var isChatting = false;
+var messages = [];
+
+var chatbody;
+var chatinput;
+var chatsend;
+var chatclear;
+
+// markdown converter
+const converter = new showdown.Converter(
+  {
+    tables: true,
+    openLinksInNewWindow: true,
+    simplifiedAutoLink: true,
+	}
+                                        );
+
+function markdownToHtml(mdString) {
+    return converter.makeHtml(mdString);
+}
+
+function getGroupId() {
+    const text = window.location.pathname;
+    return text.match(/\d+/)[0];
+}
+
+function getToken() {
+    const token = document.cookie.split(";").find((element) => element.trim().startsWith("jwt"));
+    if (token) {
+        return token.split("=")[1];
+    } else {
+        return null;
+    }
+}
+
+function setChatHistory() {
+    const groupId = getGroupId();
+    let prevData = JSON.parse(sessionStorage.getItem("chatbot"));
+    prevData = prevData || {};
+    prevData[groupId] = messages;
+    sessionStorage.setItem("chatbot", JSON.stringify(prevData));
+}
+
+function getBotHistory() {
+    const groupId = getGroupId();        
+    const data = JSON.parse(sessionStorage.getItem("chatbot"));
+    if (data) {
+        return data[groupId];
+    }
+    return data;
+}
+
+function appendMessageToHTML(message, scrollToEnd = true) {
+    if (message.role == "user" || message.role == "assistant") {
+        let msgDiv = document.createElement("div");
+        msgDiv.classList.add("msg", message.role);
+        msgDiv.innerHTML = markdownToHtml(message.content);      
+        chatbody.appendChild(msgDiv);
+        var button = document.createElement("button");
+        button.className = "material-symbols-outlined copy";
+        button.innerHTML = "content_copy";
+        button.addEventListener("click", function() {
+            const timeout = setTimeout(() => {
+                this.innerHTML = "content_copy";
+            }, 1000);
+            this.innerHTML = "done";
+            navigator.clipboard.writeText(
+                this.parentNode.textContent.replace(this.textContent,"")
+            );
+        });
+        msgDiv.appendChild(button);
+        if (scrollToEnd) {
+            chatbody.scrollTop = chatbody.scrollHeight;
+        }
+    } 
+}
+
+function clearConversation() {
+    chatbody.innerHTML = '';
+    messages.length = 0; // Clear the messages array
+}
+
+function reloadChatHistory() {
+    const history = getBotHistory();
+    if (history) {
+        history.forEach((element) => {
+            appendMessageToHTML(element, false);
+        });
+        messages = history;
+        // scroll to end
+        chatbody.scrollTop = chatbody.scrollHeight;
+    }
+}
+
+function chat(message) {
+    messages.push(message);
+
+    const groupId = getGroupId();
+    const url = `${CHAT_HOST_CONTEXT}/groups/${groupId}/llm-model/chat`;
+
+    const data = {
+        "approach": "rrr",
+        "history": messages.slice(HISTORY_SLICE_COUNT),
+        "overrides": {
+            "model": "gpt-35-turbo-16k",
+            "top": 3,
+            "temperature": 0,
+            "top_p": 1,
+            "max_tokens": 2000,
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+        }
+    };
+    const token = getToken();
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+        controller.abort();
+    }, 30000);
+    
+    fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "authorization": "Bearer " + token,
+            "provider": "GEN_KB",
+        },
+        body: JSON.stringify(data),
+        signal: controller.signal
+    })
+    .then(response => {
+        if (response.status != 200 && response.status != 201) {
+            throw new Error(response.status);
+        }
+        return response.json();
+    })
+    .then(result => {
+        messages.push(result.message);
+        appendMessageToHTML(result.message);
+        setChatHistory();
+    })
+    .catch(error => {
+        console.log(error);
+        if (error.message === '401' || error.message === '403') {
+            location.reload();
+            return;
+        }
+        var errorMessage = {
+            "role": "assistant", 
+            "content": "Sorry, something went wrong. Please try again later."
+        };
+        appendMessageToHTML(errorMessage);
+    })
+    .finally(() => {
+        clearTimeout(timeout);
+        isChatting = false;
+    });
+}
+
+window javascript
+window.onload = function() {
+    chatbody = document.getElementById("chatfooter");
+    input = document.getElementById("chatinput");
+    send = document.getElementById("chatsend");
+    clearChat = document.getElementById("chatclear");
+
+    send.addEventListener("click", function() {
+        if (input.value.trim() !== '') {
+            const message = {
+                role: 'user',
+                content: input.value,
+            };
+            appendMessageToHTML(message);
+            chat(message);
+            input.value = '';
+        }
+    });
+
+    input.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+            send.click();
+        }
+    });
+
+    clearChat.addEventListener("click", function() {
+        clearConversation();
+        setChatHistory();
+    });
+
+    reloadChatHistory();
+};
+    </script>
+  
+  
+</head>
+<body>
+    <div class="chatbox">
+        <div class="chatheader">
+            Chat Bot
+        </div>
+        <div class="chatbody" id="chatbody">
+            <!-- Messages will be dynamically added here -->
+        </div>
+        <div class="chatfooter">
+            <input type="text" id="chatinput" placeholder="Type a message...">
+            <button id="chatsend">Send</button>
+            <button id="chatclear" title="Clear chat">X</button>
+        </div>
+    </div>
+
+    
+</body>
+</html>
